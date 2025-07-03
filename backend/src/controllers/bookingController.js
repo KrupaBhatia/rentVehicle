@@ -8,21 +8,24 @@ const createBooking = async (req, res) => {
     if (!firstName || !lastName || !startDate || !endDate || !vehicleId) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
+    const normalizedStart = new Date(startDate);
+    const normalizedEnd = new Date(endDate);
+
     const conflict = await Booking.findOne({
       where: {
         vehicleId,
         [Op.or]: [
           {
-            startDate: { [Op.between]: [startDate, endDate] }
+            startDate: { [Op.between]: [normalizedStart, normalizedEnd] }
           },
           {
-            endDate: { [Op.between]: [startDate, endDate] }
+            endDate: { [Op.between]: [normalizedStart, normalizedEnd] }
           },
           {
             [Op.and]: [
-              { startDate: { [Op.lte]: startDate } },
-              { endDate: { [Op.gte]: endDate } }
+              { startDate: { [Op.lte]: normalizedStart } },
+              { endDate: { [Op.gte]: normalizedEnd } }
             ]
           }
         ]
@@ -34,12 +37,17 @@ const createBooking = async (req, res) => {
     }
 
     const newBooking = await Booking.create({
-      firstName, lastName, startDate, endDate, vehicleId
+      firstName,
+      lastName,
+      startDate: normalizedStart,
+      endDate: normalizedEnd,
+      vehicleId
     });
 
-    res.status(201).json(newBooking);
+    return res.status(201).json(newBooking);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create booking' });
+    console.error('Booking error:', err);
+    return res.status(500).json({ error: 'Failed to create booking' });
   }
 };
 
